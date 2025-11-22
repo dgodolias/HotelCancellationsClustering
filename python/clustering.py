@@ -7,14 +7,15 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score, normalized_mutual_info_score, adjusted_rand_score
 import warnings
+from matplotlib.backends.backend_pdf import PdfPages
 
 # Configuration
 warnings.filterwarnings('ignore')
 plt.rcParams['figure.figsize'] = (10, 6)
 sns.set_style('whitegrid')
 
-# Ensure visuals directory exists
-VISUALS_DIR = 'visuals'
+# Ensure visuals directory exists inside python folder
+VISUALS_DIR = os.path.join(os.path.dirname(__file__), 'visuals')
 if not os.path.exists(VISUALS_DIR):
     os.makedirs(VISUALS_DIR)
 
@@ -52,7 +53,7 @@ def fix_invalid_date(date_str):
 def main():
     print("Loading dataset...")
     #FileNotFoundError: [Errno 2] No such file or directory: '../project_cluster.csv'
-    df = pd.read_csv('project_cluster.csv')
+    df = pd.read_csv('../project_cluster.csv')
     
     
     # --- Preprocessing ---
@@ -89,7 +90,7 @@ def main():
     df_encoded = pd.get_dummies(df_processed, columns=categorical_features, drop_first=False)
     
     # Drop meal, room type, week related columns
-    cols_to_drop = [col for col in df_encoded.columns if col.startswith(('type.of.meal', 'room.type', 'number.of.weekend.nights', 'number.of.week.nights'))]
+    cols_to_drop = [col for col in df_encoded.columns if col.startswith(('type.of.meal', 'room.type'))] + ['number.of.weekend.nights', 'number.of.week.nights']
     df_encoded.drop(columns=cols_to_drop, inplace=True)
     
     # Fill NaNs
@@ -257,6 +258,35 @@ def main():
     
     print("\nCancellation Rates:")
     print(cancellation_rates)
+
+    # Create PDF with all plots
+    print("Creating PDF report...")
+    # Save PDF in the python folder (script directory)
+    pdf_path = os.path.join(os.path.dirname(__file__), 'clustering_report.pdf')
+    
+    # Get all png files in visuals dir
+    plot_files = [f for f in os.listdir(VISUALS_DIR) if f.endswith('.png')]
+    
+    # Sort them to have a logical order if possible, or just alphabetical
+    plot_files.sort()
+    
+    with PdfPages(pdf_path) as pdf:
+        for filename in plot_files:
+            filepath = os.path.join(VISUALS_DIR, filename)
+            # Read image
+            img = plt.imread(filepath)
+            
+            # Create a figure to display the image
+            plt.figure(figsize=(12, 8))
+            plt.imshow(img)
+            plt.axis('off') # Hide axes
+            plt.title(filename, fontsize=10)
+            
+            # Save to PDF
+            pdf.savefig()
+            plt.close()
+            
+    print(f"PDF report saved to: {pdf_path}")
 
 if __name__ == "__main__":
     main()
