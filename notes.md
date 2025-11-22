@@ -29,3 +29,38 @@
 - NMI (Normalized Mutual Information)
 - ARI (Adjusted Rand Index)
 
+## 6. Data Binning (Ομαδοποίηση Τιμών)
+
+Για να μειώσουμε το διάσταση και να βελτιώσουμε το clustering, ομαδοποιούμε τις εξής μεταβλητές:
+
+### Μεταβλητές με Binning:
+1. **number.of.children**: 0, 1+ (αντί για 0, 1, 2, 3, κλπ)
+   - 0 παιδιά
+   - 1+ παιδιά
+
+2. **number.of.weekend.nights**: 0, 1, 2, 3+
+   - Διατηρούμε τις τιμές 0, 1, 2
+   - Όλες οι τιμές >= 3 γίνονται 3
+
+3. **number.of.week.nights**: Κανονικά ως το 5, μετά 6+
+   - Διατηρούμε τις τιμές 0-5
+   - Όλες οι τιμές >= 6 γίνονται 6
+
+4. **P.C (Previous Cancellations)**: 0, 1+
+   - 0 cancellations
+   - 1+ cancellations
+
+5. **P.not.C (Previous Non-Cancellations)**: 0, 1+
+   - 0 non-cancellations
+   - 1+ non-cancellations
+
+6. **Total_Guests**: 1, 2, 3+
+   - Όσα είναι 0 γίνονται 1 (διόρθωση)
+   - Διατηρούμε τις τιμές 1, 2
+   - Όλες οι τιμές >= 3 γίνονται 3
+
+7. **Total_Nights**: Κανονικά ως το 7, μετά 8+
+   - Διατηρούμε τις τιμές 0-7
+   - Όλες οι τιμές >= 8 γίνονται 8
+   - Σημείωση: Round σε ακέραιο (αν υπάρχουν float values)
+
