@@ -53,7 +53,7 @@ def fix_invalid_date(date_str):
 def main():
     print("Loading dataset...")
     #FileNotFoundError: [Errno 2] No such file or directory: '../project_cluster.csv'
-    df = pd.read_csv('../project_cluster.csv')
+    df = pd.read_csv('project_cluster.csv')
     
     
     # --- Preprocessing ---
@@ -69,7 +69,7 @@ def main():
     df_processed['Price_per_Person'].replace([np.inf, -np.inf], np.nan, inplace=True)
     
     # Date fixing
-    df_processed['date.of.reservation'] = df_processed['date.of.reservation'].apply(fix_invalid_date)
+    df_processed['date.of.reservation'] = df_processed['date.of.reservation'].apply(fix_invalid_date) # pyright: ignore[reportArgumentType, reportCallIssue]
     df_processed.drop(columns=['date.of.reservation'], inplace=True)
     
     # Value capping/binning

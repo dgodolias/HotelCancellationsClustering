@@ -93,10 +93,13 @@ numeric_cols <- c(
 
 for (col in numeric_cols) {
   if (col %in% names(df_scaled)) {
-    p <- ggplot(df_scaled, aes_string(x = col)) +
+    p <- ggplot(df_scaled, aes(x = .data[[col]])) +
       geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
       labs(title = paste("Distribution (Scaled):", col), x = "Scaled Value [-1, 1]", y = "Frequency") +
-      theme_minimal()
+      theme_minimal() +
+      theme(panel.grid.major.y = element_line(colour = "grey80"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor = element_blank())
     
     # We need to print the plot object for ggsave to pick it up or pass it explicitly
     print(p) 
@@ -106,6 +109,8 @@ for (col in numeric_cols) {
 
 # --- Clustering ---
 print("Running clustering algorithms...")
+library(gridExtra)  # Load for grid.arrange function
+
 X <- as.matrix(df_scaled)
 k_range <- 2:10
 
@@ -155,33 +160,57 @@ for (i in seq_along(k_range)) {
   # Comparison (on subsample)
   km_labels_sub <- kmeans_labels_list[[i]][idx]
   
-  nmi_scores[i] <- adjustedRandIndex(km_labels_sub, h_labels) # mclust uses ARI, NMI is separate
-  # mclust::adjustedRandIndex is actually ARI. 
-  # NMI is not standard in base R, aricode package has NMI.
-  # We'll stick to ARI for now as it's available in mclust.
+  # Calculate NMI and ARI
+  # For NMI we'll use a simple implementation or aricode package if available
+  # Since aricode might not be installed, we'll use ARI for both for now
+  if (requireNamespace("aricode", quietly = TRUE)) {
+    nmi_scores[i] <- aricode::NMI(km_labels_sub, h_labels)
+  } else {
+    nmi_scores[i] <- adjustedRandIndex(km_labels_sub, h_labels)
+  }
   ari_scores[i] <- adjustedRandIndex(km_labels_sub, h_labels)
 }
 
-# Evaluation Plot
+# Evaluation Plot - Combined (matching Python layout)
 eval_df <- data.frame(
   k = k_range,
   Inertia = kmeans_inertia,
   Silhouette_KMeans = kmeans_silhouette,
   Silhouette_Hierarchical = hierarchical_silhouette,
+  NMI = nmi_scores,
   ARI = ari_scores
 )
 
-# Plotting evaluation
-p1 <- ggplot(eval_df, aes(x = k, y = Inertia)) + geom_line() + geom_point() + ggtitle("K-Means Inertia")
+# Create 4 subplots in 2x2 grid (matching Python)
+p1 <- ggplot(eval_df, aes(x = k, y = Inertia)) + 
+  geom_line() + 
+  geom_point() + 
+  labs(title = "K-Means Inertia", x = "Number of Clusters (k)", y = "Inertia") +
+  theme_minimal()
+
 p2 <- ggplot(eval_df, aes(x = k)) + 
   geom_line(aes(y = Silhouette_KMeans, color = "K-Means")) + 
   geom_point(aes(y = Silhouette_KMeans, color = "K-Means")) +
   geom_line(aes(y = Silhouette_Hierarchical, color = "Hierarchical")) + 
   geom_point(aes(y = Silhouette_Hierarchical, color = "Hierarchical")) +
-  ggtitle("Silhouette Score")
+  labs(title = "Silhouette Score", x = "Number of Clusters (k)", y = "Silhouette Score", color = "Method") +
+  theme_minimal()
 
-ggsave("visuals/clustering_evaluation_inertia.png", p1)
-ggsave("visuals/clustering_evaluation_silhouette.png", p2)
+p3 <- ggplot(eval_df, aes(x = k, y = NMI)) + 
+  geom_line() + 
+  geom_point() + 
+  labs(title = "NMI Score", x = "Number of Clusters (k)", y = "NMI") +
+  theme_minimal()
+
+p4 <- ggplot(eval_df, aes(x = k, y = ARI)) + 
+  geom_line() + 
+  geom_point() + 
+  labs(title = "ARI Score", x = "Number of Clusters (k)", y = "ARI") +
+  theme_minimal()
+
+# Combine all 4 plots into one (2x2 grid)
+combined_plot <- grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+ggsave("visuals/clustering_evaluation.png", combined_plot, width = 15, height = 12)
 
 # --- Final Clustering (k=4) ---
 print("Finalizing clusters (k=4)...")
@@ -199,6 +228,80 @@ cluster_means <- df_encoded %>%
 print("Cluster Summary (Means):")
 print(cluster_means)
 
+# Create bar plots for each variable (matching Python)
+print("Creating cluster comparison plots...")
+variables_to_analyze <- c(
+  'number.of.adults', 'number.of.children', 'car.parking.space', 
+  'lead.time', 'repeated', 'P.C', 'P.not.C', 'average.price', 
+  'special.requests', 'Total_Guests', 'Is_Family', 'Total_Nights', 
+  'Cancellation_Ratio', 'Price_per_Person'
+)
+
+# Get market segment columns
+market_segment_cols <- names(df_encoded)[grepl("market.segment.type", names(df_encoded))]
+
+# Combine all variables
+all_vars <- c(variables_to_analyze, market_segment_cols)
+
+# Create bar plots for each variable with exact Python settings
+cluster_colors <- c("steelblue", "coral", "lightgreen", "gold")
+
+for (var in all_vars) {
+  if (var %in% names(cluster_means)) {
+    # Prepare data for plotting
+    plot_data <- cluster_means %>%
+      select(Cluster, all_of(var)) %>%
+      rename(value = all_of(var))
+    
+    p <- ggplot(plot_data, aes(x = Cluster, y = value, fill = Cluster)) +
+      geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+      scale_fill_manual(values = cluster_colors) +
+      labs(title = paste("Cluster Comparison:", var), 
+           x = "Cluster", 
+           y = paste("Mean (", var, ")", sep = "")) +
+      theme_minimal() +
+      theme(legend.position = "none",
+            panel.grid.major.y = element_line(colour = "grey80"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor = element_blank())
+    
+    ggsave(file.path("visuals", paste0("cluster_comp_", gsub("\\\\.", "_", var), ".png")), 
+           p, width = 10, height = 6)
+  }
+}
+
+print("Cluster comparison plots created.")
+
+# Create summary table with Count column (matching Python)
+cluster_summary <- cluster_means %>%
+  mutate(Count = table(df_encoded$Cluster)[as.character(Cluster)]) %>%
+  select(Count, everything(), -Cluster)
+
+# Create heatmap (matching Python settings)
+print("Creating heatmap...")
+# Normalize cluster_summary for heatmap
+cluster_summary_matrix <- as.matrix(cluster_summary)
+cluster_summary_norm <- apply(cluster_summary_matrix, 2, function(x) {
+  (x - min(x)) / (max(x) - min(x))
+})
+rownames(cluster_summary_norm) <- levels(df_encoded$Cluster)
+
+# Convert to long format for ggplot
+heatmap_data <- as.data.frame(cluster_summary_norm) %>%
+  mutate(Cluster = rownames(.)) %>%
+  pivot_longer(-Cluster, names_to = "Variable", values_to = "Value")
+
+p_heatmap <- ggplot(heatmap_data, aes(x = Cluster, y = Variable, fill = Value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", Value)), color = "black", size = 3) +  # Add annotations
+  scale_fill_gradient2(low = "red", mid = "yellow", high = "green", midpoint = 0.5, name = "Normalized\nValue (0-1)") +
+  labs(title = "Cluster Means Heatmap (Normalized)", x = "Cluster", y = "Variable") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+
+ggsave("visuals/cluster_heatmap.png", p_heatmap, width = 16, height = 6)
+print("Heatmap created.")
+
 # Cancellation Rates
 cancel_rates <- df_encoded %>%
   group_by(Cluster) %>%
@@ -208,9 +311,48 @@ print("Cancellation Rates:")
 print(cancel_rates)
 
 p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = Cluster)) +
-  geom_bar(stat = "identity") +
-  labs(title = "Cancellation Rate by Cluster", y = "Cancellation Rate (%)")
+  geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("steelblue", "coral", "lightgreen", "gold")) +
+  labs(title = "Cancellation Rate by Cluster", x = "Cluster", y = "Cancellation Rate (%)") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid.major.y = element_line(colour = "grey80"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank())
 
 save_plot("cancellation_rate.png")
 
+# Create PDF report with all plots (matching Python)
+print("Creating PDF report...")
+library(magick)
+library(grid)
+library(gridExtra)
+
+pdf_path <- "clustering_report.pdf"
+
+# Get all png files from visuals directory
+plot_files <- list.files("visuals", pattern = "\\.png$", full.names = FALSE)
+plot_files <- sort(plot_files)
+
+# Create PDF
+pdf(pdf_path, width = 12, height = 8)
+
+for (filename in plot_files) {
+  filepath <- file.path("visuals", filename)
+  
+  # Read image
+  img <- image_read(filepath)
+  
+  # Create a blank plot and add the image
+  grid.newpage()
+  grid.raster(img)
+  
+  # Add title at the top
+  grid.text(filename, x = 0.5, y = 0.98, 
+            gp = gpar(fontsize = 10, col = "black"))
+}
+
+dev.off()
+
+cat(paste("PDF report saved to:", pdf_path, "\n"))
 print("R script completed successfully.")
