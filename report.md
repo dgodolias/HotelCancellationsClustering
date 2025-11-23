@@ -39,13 +39,13 @@
     - Παραδειγμα, μια παρατηρηση με lead.time=100 & total.guests=2 θα είναι πιο κοντά στην παρατήρηση με lead.time=100 & total.guests=5, παρά την παρατήρηση με lead.time=105 & total.guests=2.
 
 ### Κατανομές Χαρακτηριστικών
-![Πλέγμα Κατανομών 1](R/visuals/dist_grid_1.png)
-![Πλέγμα Κατανομών 2](R/visuals/dist_grid_2.png)
-![Πλέγμα Κατανομών 3](R/visuals/dist_grid_3.png)
-![Πλέγμα Κατανομών 4](R/visuals/dist_grid_4.png)
+<img src="R/visuals/dist_grid_1.png" alt="Πλέγμα Κατανομών 1" width="570"/>
+<img src="R/visuals/dist_grid_2.png" alt="Πλέγμα Κατανομών 2" width="570"/>
+<img src="R/visuals/dist_grid_3.png" alt="Πλέγμα Κατανομών 3" width="570"/>
+<img src="R/visuals/dist_grid_4.png" alt="Πλέγμα Κατανομών 4" width="570"/>
 
 ### Κατανομή Market Segment
-![Κατανομή Market Segment Type](R/visuals/dist_market_segment.png)
+<img src="R/visuals/dist_market_segment.png" alt="Κατανομή Market Segment Type" width="700"/>
 
 ### Clustering
 Χρησιμοποιήσαμε δύο κύριους αλγόριθμους clustering για να εξασφαλίσουμε την εγκυρότητα των αποτελεσμάτων:
@@ -76,19 +76,19 @@
 Η εξέλιξη της βελτίωσης φαίνεται στα παρακάτω βήματα:
 
 1.  **Step 1 (Initial State)**: Όλες οι μεταβλητές συμπεριλαμβανομένων των `meal type` και `room type`, χωρίς scaling.
-    ![Output 1 - Initial](R/old_visuals/output1.png)
+    <img src="R/old_visuals/output1.png" alt="Output 1 - Initial" width="700"/>
     *Εδώ παρατηρούμε χαμηλό διαχωρισμό.*
 
 2.  **Step 2 (Scaling)**: Εφαρμογή scaling στις μεταβλητές.
-    ![Output 2 - Scaled](R/old_visuals/output2.png)
+    <img src="R/old_visuals/output2.png" alt="Output 2 - Scaled" width="700"/>
     *Δεν παρατηρήθηκε ουσιαστική βελτίωση στις μετρικές των Inertia & Sillhouette, παρά μονο στην συμφωνία των 2 αλγορίθμων με βαση την βελτίωση των NMI και ARI. Το scaling όμως αποτελει απαραίτητη διαδικασία για τον λόγο που έχει ηδη αναφερθεί.*
 
 3.  **Step 3 (Categorical Removal)**: Αφαίρεση των κατηγορικών μεταβλητών που προέκυψαν από `type.of.meal` και `room.type` για μείωση θορύβου.
-    ![Output 3 - No Categoricals](R/old_visuals/output3.png)
+    <img src="R/old_visuals/output3.png" alt="Output 3 - No Categoricals" width="700"/>
     *Η βελτίωση των metric του K-Means και του Hierarchical Clustering είναι σημαντική και η συμφωνία των 2 αλγορίθμων είναι πιο σταθερή.Βέβαια, το Inertia με elbow method υποστηρίζει οτι k=6, το Sillhouette υποστηρίζει k=4, αλλά και για k=6 είναι σχετικλα υψηλό το Sillhouette, ενώ το NMI και ARI υποστηρίζουν k=4, χωρίς να αποκλείουν και το k=6. Για να έχουμε λοιπόν μια πιο σαφή εικόνα, με stepwise θα πρέπει να αφαιρέσουμε κάποιον θόρυβο, να καλυτερέυσει το Sillhouette και οι υπόλοιπες μετρικές να γίνουν πιο σίγουρες για την επιλογή του βέλτιστου k.*
 
 4.  **Step 4 (Temporal Removal)**: Αφαίρεση των μεταβλητών `arrival.year` και `date.of.reservation`.
-    ![Output 4 - Final](R/old_visuals/output4.png)
+    <img src="R/old_visuals/output4.png" alt="Output 4 - Final" width="700"/>
     *Η βελτίωση των metric του K-Means και του Hierarchical Clustering είναι σημαντική και η συμφωνία των 2 αλγορίθμων είναι πιο σταθερή. Η αφαίρεση των μεταβλητών `arrival.year` και `date.of.reservation` ανέβαζε το Silhouette περισσότερο από οποιαδήποτε άλλη μεταβλητή και η συμφωνία των 2 αλγορίθμων είναι πιο σταθερή. Πλέον, μπορούμε να υποστηρίξουμε με αρκετή σιγουριά οτι k=4. Παρόλαυτα, επειδή με stepwise βρήκαμε οτι αν αφαιρέσουμε το Arrival_Month θα καλυτερέυσει το Sillhouette κατα ~33%, δοκιμάζουμε και αυτό.*
     
 
@@ -98,7 +98,7 @@
     - **Συμπέρασμα**: Το `Arrival_Month` είναι θόρυβος και δεν συμβάλλει στον διαχωρισμό των clusters
     - **Ενέργεια**: Αφαιρέθηκε το `Arrival_Month`
     
-    ![Τελική Αξιολόγηση](R/visuals/clustering_evaluation.png)
+    <img src="R/visuals/clustering_evaluation.png" alt="Τελική Αξιολόγηση" width="570"/>
     *Η τελική μορφή όπου αναδείχθηκε το k=4 ως βέλτιστη λύση. Σχολιάζω παρακάτω τα αποτελέσματα του διαγράμματος*
 
 ### Σύγκριση Αλγορίθμων & Επιλογή Βέλτιστου k
@@ -106,7 +106,7 @@
 
 | k | NMI | ARI | Σχόλια |
 |---|---|---|---|
-| 2 | 0.9537 | 0.9800 | Υψηλή συμφωνία |
+| 2 | 0.9537 | 0.570 | Υψηλή συμφωνία |
 | **3** | **0.9920** | **0.9963** | **Εξαιρετικά μέγιστη συμφωνία - Βέλτιστη λύση** |
 | **4** | **0.9726** | **0.9890** | **Πολύ υψηλή συμφωνία - Εξίσου σημαντική λύση** |
 | 5 | 0.7569 | 0.6157 | Σημαντική πτώση στη συμφωνία |
@@ -127,21 +127,31 @@
 Με βάση την τελική ομαδοποίηση, εντοπίσαμε 4 διακριτά προφίλ πελατών.
 
 ### Heatmap
-![Heatmap](R/visuals/cluster_heatmap.png)
+<img src="R/visuals/cluster_heatmap.png" alt="Heatmap" width="700"/>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
 
 ### Ποσοστά Ακυρώσεων
-![Ποσοστά Ακυρώσεων](R/visuals/cancellation_rate.png)
+<img src="R/visuals/cancellation_rate.png" alt="Ποσοστά Ακυρώσεων" width="570"/>
 
 ### Συγκρίσεις Ομάδων
-![Πλέγμα Συγκρίσεων Ομάδων 1](R/visuals/cluster_comp_grid_1.png)
-![Πλέγμα Συγκρίσεων Ομάδων 2](R/visuals/cluster_comp_grid_2.png)
-![Πλέγμα Συγκρίσεων Ομάδων 3](R/visuals/cluster_comp_grid_3.png)
-![Πλέγμα Συγκρίσεων Ομάδων 4](R/visuals/cluster_comp_grid_4.png)
+<img src="R/visuals/cluster_comp_grid_1.png" alt="Πλέγμα Συγκρίσεων Ομάδων 1" width="570"/>
+<img src="R/visuals/cluster_comp_grid_2.png" alt="Πλέγμα Συγκρίσεων Ομάδων 2" width="570"/>
+<img src="R/visuals/cluster_comp_grid_3.png" alt="Πλέγμα Συγκρίσεων Ομάδων 3" width="570"/>
+<img src="R/visuals/cluster_comp_grid_4.png" alt="Πλέγμα Συγκρίσεων Ομάδων 4" width="570"/>
 
 ### Σύγκριση Market Segment ανά Cluster
-![Market Segment ανά Cluster](R/visuals/cluster_comp_market_segment.png)
+<img src="R/visuals/cluster_comp_market_segment.png" alt="Market Segment ανά Cluster" width="570"/>
 
 Θα επιχειρήσουμε να τα ονοματοδοτήσουμε κατάλληλα και να τα παρατηρήσουμε. Για την επιβεβαίωση των βασικών χαρακτηριστικών των ομάδων, ανατρέξτε στο heatmap που βρίσκεται παραπάνω:
+<br>
+<br>
+<br>
+<br>
 
 ### Cluster 0: Premium Οικογένειες
 - **Προφίλ**: Οικογένειες σε διακοπές.
