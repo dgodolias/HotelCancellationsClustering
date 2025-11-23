@@ -6,10 +6,18 @@ library(mclust)
 library(gridExtra)
 library(grid)
 library(magick)
+library(readxl)
 
 # Create visuals directory
 if (!dir.exists("visuals")) {
   dir.create("visuals")
+}
+
+# Prevent Rplots.pdf generation
+if (Sys.info()["sysname"] == "Windows") {
+  pdf(file = "NUL")
+} else {
+  pdf(file = "/dev/null")
 }
 
 save_grid_plots <- function(plot_list, prefix, ncol = 2, nrow = 2) {
@@ -28,7 +36,7 @@ save_grid_plots <- function(plot_list, prefix, ncol = 2, nrow = 2) {
       }
     }
     
-    combined_plot <- grid.arrange(grobs = chunk_plots, ncol = ncol, nrow = nrow)
+    combined_plot <- arrangeGrob(grobs = chunk_plots, ncol = ncol, nrow = nrow)
     filename <- paste0(prefix, "_grid_", i, ".png")
     ggsave(file.path("visuals", filename), combined_plot, width = 15, height = 12)
     print(paste("Saved grid plot:", filename))
@@ -36,11 +44,15 @@ save_grid_plots <- function(plot_list, prefix, ncol = 2, nrow = 2) {
 }
 
 print("Loading dataset...")
-df <- read.csv("../project_cluster.csv")
+df <- read_excel("../project cluster.xlsx")
 
 print("Preprocessing data...")
 
 df <- df %>%
+  mutate(
+    across(c(number.of.adults, number.of.children, number.of.weekend.nights, 
+             number.of.week.nights, P.C, P.not.C, average.price), as.numeric)
+  ) %>%
   mutate(
     Total_Guests = number.of.adults + number.of.children,
     Is_Family = as.integer(number.of.children > 0),
@@ -317,7 +329,7 @@ p4 <- ggplot(eval_df, aes(x = k, y = ARI)) +
   theme(panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
 
-combined_plot <- grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
+combined_plot <- arrangeGrob(p1, p2, p3, p4, ncol = 2, nrow = 2)
 ggsave("visuals/clustering_evaluation.png", combined_plot, width = 15, height = 12)
 
 # --- Final Clustering (k=4) ---
