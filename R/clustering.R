@@ -92,6 +92,17 @@ df_scaled <- df_encoded %>%
 
 print("Data processed and scaled.")
 
+# Print variables used in clustering
+cat("\n============================================================\n")
+cat("VARIABLES USED IN CLUSTERING\n")
+cat("============================================================\n")
+cat("\nTotal variables:", ncol(df_scaled), "\n\n")
+clustering_vars <- names(df_scaled)
+for (i in seq_along(clustering_vars)) {
+  cat(sprintf("%2d. %s\n", i, clustering_vars[i]))
+}
+cat("\n============================================================\n\n")
+
 # --- Plotting Distributions ---
 print("Generating distribution plots...")
 numeric_cols <- c(
@@ -106,7 +117,7 @@ for (col in numeric_cols) {
   if (col %in% names(df_scaled)) {
     p <- ggplot(df_scaled, aes(x = .data[[col]])) +
       geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
-      stat_bin(bins = 30, geom = "text", aes(label = ifelse(after_stat(count) > 0, after_stat(count), "")), vjust = -0.5, size = 3) +
+      stat_bin(bins = 30, geom = "text", aes(label = ifelse(after_stat(count) > 0, after_stat(count), NA)), vjust = -0.5, size = 3) +
       labs(title = paste("Distribution (Scaled):", col), x = "Scaled Value [-1, 1]", y = "Frequency") +
       theme_minimal() +
       theme(panel.grid.major.y = element_line(colour = "grey80"),
@@ -117,6 +128,30 @@ for (col in numeric_cols) {
 }
 
 save_grid_plots(dist_plots, "dist")
+
+# Create distribution plot for market segment (standalone)
+market_segment_dist <- df %>%
+  dplyr::count(market.segment.type) %>%
+  mutate(proportion = n / sum(n))
+
+p_market_dist <- ggplot(market_segment_dist, aes(x = reorder(market.segment.type, -proportion), y = proportion, fill = market.segment.type)) +
+  geom_bar(stat = "identity", color = "black", alpha = 0.7) +
+  geom_text(aes(label = sprintf("%.2f\n(n=%d)", proportion, n)), vjust = -0.5, size = 3) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Distribution: Market Segment Type", 
+       x = "Market Segment", 
+       y = "Proportion") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        panel.grid.major.y = element_line(colour = "grey80"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+
+ggsave("visuals/dist_market_segment.png", p_market_dist, width = 10, height = 6)
+print("Market segment distribution plot created.")
 
 
 # --- Clustering ---
@@ -183,7 +218,9 @@ p1 <- ggplot(eval_df, aes(x = k, y = Inertia)) +
   geom_line() + 
   geom_point() + 
   labs(title = "K-Means Inertia", x = "Number of Clusters (k)", y = "Inertia") +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
 
 p2 <- ggplot(eval_df, aes(x = k)) + 
   geom_line(aes(y = Silhouette_KMeans, color = "K-Means")) + 
@@ -191,19 +228,25 @@ p2 <- ggplot(eval_df, aes(x = k)) +
   geom_line(aes(y = Silhouette_Hierarchical, color = "Hierarchical")) + 
   geom_point(aes(y = Silhouette_Hierarchical, color = "Hierarchical")) +
   labs(title = "Silhouette Score", x = "Number of Clusters (k)", y = "Silhouette Score", color = "Method") +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
 
 p3 <- ggplot(eval_df, aes(x = k, y = NMI)) + 
   geom_line() + 
   geom_point() + 
   labs(title = "NMI Score", x = "Number of Clusters (k)", y = "NMI") +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
 
 p4 <- ggplot(eval_df, aes(x = k, y = ARI)) + 
   geom_line() + 
   geom_point() + 
   labs(title = "ARI Score", x = "Number of Clusters (k)", y = "ARI") +
-  theme_minimal()
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
 
 combined_plot <- grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 ggsave("visuals/clustering_evaluation.png", combined_plot, width = 15, height = 12)
@@ -225,7 +268,8 @@ print(cluster_means)
 
 print("Creating cluster comparison plots...")
 variables_to_analyze <- c(
-  'number.of.adults', 'number.of.children', 'car.parking.space', 
+  'number.of.adults', 'number.of.children', 'number.of.weekend.nights',
+  'number.of.week.nights', 'car.parking.space', 
   'lead.time', 'repeated', 'P.C', 'P.not.C', 'average.price', 
   'special.requests', 'Total_Guests', 'Is_Family', 'Total_Nights', 
   'Cancellation_Ratio', 'Price_per_Person'
@@ -234,10 +278,13 @@ variables_to_analyze <- c(
 market_segment_cols <- names(df_encoded)[grepl("market.segment.type", names(df_encoded))]
 
 all_vars <- c(variables_to_analyze, market_segment_cols)
+
 cluster_colors <- c("steelblue", "coral", "lightgreen", "gold")
 
 comp_plots <- list()
-for (var in all_vars) {
+
+# Create plots for numeric variables (excluding market segment dummies)
+for (var in variables_to_analyze) {
   if (var %in% names(cluster_means)) {
     plot_data <- cluster_means %>%
       select(Cluster, all_of(var)) %>%
@@ -258,6 +305,44 @@ for (var in all_vars) {
     comp_plots[[length(comp_plots) + 1]] <- p
   }
 }
+
+# Create a single grouped bar plot for market segment
+# Reconstruct the original market.segment.type from the dummy variables
+market_segment_data <- df_encoded %>%
+  mutate(
+    market_segment = case_when(
+      market.segment.typeComplementary == 1 ~ "Complementary",
+      market.segment.typeCorporate == 1 ~ "Corporate",
+      market.segment.typeOffline == 1 ~ "Offline",
+      market.segment.typeOnline == 1 ~ "Online",
+      TRUE ~ "Aviation"  # If all dummies are 0, it's Aviation (dropped category)
+    )
+  ) %>%
+  group_by(Cluster, market_segment) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(Cluster) %>%
+  mutate(proportion = count / sum(count))
+
+p_market <- ggplot(market_segment_data, aes(x = Cluster, y = proportion, fill = market_segment)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black", alpha = 0.8) +
+  geom_text(aes(label = sprintf("%.2f", proportion)), 
+            position = position_dodge(width = 0.9), vjust = -0.5, size = 2.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Cluster Comparison: Market Segment Type", 
+       x = "Cluster", 
+       y = "Proportion",
+       fill = "Market Segment") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_line(colour = "grey80"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
+
+# Save market segment plot as standalone file (not in grid)
+ggsave("visuals/cluster_comp_market_segment.png", p_market, width = 12, height = 6)
+print("Market segment cluster comparison plot created.")
 
 save_grid_plots(comp_plots, "cluster_comp")
 print("Cluster comparison plots created.")
@@ -280,10 +365,12 @@ heatmap_data <- as.data.frame(cluster_summary_norm) %>%
 p_heatmap <- ggplot(heatmap_data, aes(x = Cluster, y = Variable, fill = Value)) +
   geom_tile() +
   geom_text(aes(label = sprintf("%.2f", Value)), color = "black", size = 3) +  # Add annotations
-  scale_fill_gradient2(low = "red", mid = "yellow", high = "green", midpoint = 0.5, name = "Normalized\nValue (0-1)") +
+  scale_fill_distiller(palette = "RdYlGn", direction = 1, name = "Normalized\nValue (0-1)") +
   labs(title = "Cluster Means Heatmap (Normalized)", x = "Cluster", y = "Variable") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
 
 ggsave("visuals/cluster_heatmap.png", p_heatmap, width = 16, height = 6)
 print("Heatmap created.")
@@ -303,7 +390,9 @@ p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = 
   theme(legend.position = "none",
         panel.grid.major.y = element_line(colour = "grey80"),
         panel.grid.major.x = element_blank(),
-        panel.grid.minor = element_blank())
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = "white", color = NA),
+        plot.background = element_rect(fill = "white", color = NA))
 
 ggsave(file.path("visuals", "cancellation_rate.png"), p_cancel, width = 10, height = 6)
 

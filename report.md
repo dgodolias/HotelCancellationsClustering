@@ -147,15 +147,20 @@
 ![Πλέγμα Κατανομών 3](R/visuals/dist_grid_3.png)
 ![Πλέγμα Κατανομών 4](R/visuals/dist_grid_4.png)
 
+### Κατανομή Market Segment
+![Κατανομή Market Segment Type](R/visuals/dist_market_segment.png)
+
 ### Συγκρίσεις Ομάδων
 ![Πλέγμα Συγκρίσεων Ομάδων 1](R/visuals/cluster_comp_grid_1.png)
 ![Πλέγμα Συγκρίσεων Ομάδων 2](R/visuals/cluster_comp_grid_2.png)
 ![Πλέγμα Συγκρίσεων Ομάδων 3](R/visuals/cluster_comp_grid_3.png)
 ![Πλέγμα Συγκρίσεων Ομάδων 4](R/visuals/cluster_comp_grid_4.png)
-![Πλέγμα Συγκρίσεων Ομάδων 5](R/visuals/cluster_comp_grid_5.png)
 
-### Θερμικός Χάρτης Ομάδων (Heatmap)
-![Θερμικός Χάρτης Ομάδων](R/visuals/cluster_heatmap.png)
+### Σύγκριση Market Segment ανά Cluster
+![Market Segment ανά Cluster](R/visuals/cluster_comp_market_segment.png)
+
+### Heatmap
+![Heatmap](R/visuals/cluster_heatmap.png)
 
 ### Ποσοστά Ακυρώσεων
 ![Ποσοστά Ακυρώσεων](R/visuals/cancellation_rate.png)
