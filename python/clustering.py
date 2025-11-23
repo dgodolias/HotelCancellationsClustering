@@ -90,7 +90,7 @@ def main():
     df_encoded = pd.get_dummies(df_processed, columns=categorical_features, drop_first=False)
     
     # Drop meal, room type, week related columns
-    cols_to_drop = [col for col in df_encoded.columns if col.startswith(('type.of.meal', 'room.type'))] + ['number.of.weekend.nights', 'number.of.week.nights']
+    cols_to_drop = [col for col in df_encoded.columns if col.startswith(('type.of.meal', 'room.type'))] 
     df_encoded.drop(columns=cols_to_drop, inplace=True)
     
     # Fill NaNs
@@ -210,7 +210,8 @@ def main():
         'number.of.adults', 'number.of.children', 'car.parking.space', 
         'lead.time', 'repeated', 'P.C', 'P.not.C', 'average.price', 
         'special.requests', 'Total_Guests', 'Is_Family', 'Total_Nights', 
-        'Cancellation_Ratio', 'Price_per_Person'
+        'Cancellation_Ratio', 'Price_per_Person', 'number.of.week.nights', 
+        'number.of.weekend.nights'
     ]
     market_segment_cols = [c for c in df_with_clusters.columns if 'market.segment.type' in c]
     

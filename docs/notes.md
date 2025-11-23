@@ -101,21 +101,6 @@
 
 Αναλύοντας τα αποτελέσματα του clustering και τις μέσες τιμές των μεταβλητών ανά cluster:
 
-### Αφαίρεση Arrival_Month:
-- **Παρατήρηση**: Οι μέσες τιμές του Arrival_Month σε όλα τα 4 clusters ήταν πολύ κοντά στο 6 (range: 6.41-6.67)
-- **Feature Elimination Analysis**: Η αφαίρεση του Arrival_Month ανέβαζε το Silhouette περισσότερο από οποιαδήποτε άλλη μεταβλητή
-- **Συμπέρασμα**: Το Arrival_Month είναι θόρυβος και δεν συμβάλλει στον διαχωρισμό των clusters
-- **Ενέργεια**: Αφαιρέθηκε το Arrival_Month
-
-### Αφαίρεση Week/Weekend Nights:
-- **Λόγος**: Διατηρούμε το Total_Nights που είναι το άθροισμά τους και παρέχει την ίδια πληροφορία χωρίς να προσθέτει πολυπλοκότητα
-- **Ενέργεια**: Αφαιρέθηκαν τα number.of.weekend.nights και number.of.week.nights
-
-**Τελικό Αποτέλεσμα**: Το dataset μειώθηκε σε **19 features** (από 21), βελτιώνοντας την ποιότητα του clustering και απλοποιώντας το μοντέλο.
-
-### Προσθήκη Market Segment Type:
-- **Παρατήρηση**: Το market.segment.type ήταν one-hot encoded στην αρχή αλλά δεν συμπεριελήφθη στην τελική ανάλυση
-- **Ενέργεια**: Προστέθηκαν ξεχωριστά διαγράμματα για τις 4 κατηγορίες (Complementary, Corporate, Offline, Online)
 - **Αποτέλεσμα**: Τελικός αριθμός features για ανάλυση: **14 αριθμητικές** + **4 market.segment.type** (one-hot encoded)
 
 ## 10. Ερμηνεία Clusters (Profiles)

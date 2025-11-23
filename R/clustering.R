@@ -4,9 +4,6 @@ library(cluster)
 library(factoextra)
 library(mclust)
 
-# Set working directory to the script location (if running interactively)
-# setwd(dirname(rstudioapi::getSourceEditorContext()$path))
-
 # Create visuals directory
 if (!dir.exists("visuals")) {
   dir.create("visuals")
@@ -17,14 +14,11 @@ save_plot <- function(filename) {
   print(paste("Saved plot:", filename))
 }
 
-# --- Load Data ---
 print("Loading dataset...")
 df <- read.csv("../project_cluster.csv")
 
-# --- Preprocessing ---
 print("Preprocessing data...")
 
-# Feature Engineering
 df <- df %>%
   mutate(
     Total_Guests = number.of.adults + number.of.children,
@@ -34,13 +28,10 @@ df <- df %>%
     Price_per_Person = average.price / Total_Guests
   )
 
-# Handle division by zero or inf in Price_per_Person
 df$Price_per_Person[is.infinite(df$Price_per_Person)] <- NA
 
-# Date fixing (simplified for R - just dropping for now as we don't use it for clustering)
 df <- df %>% select(-date.of.reservation)
 
-# Value capping/binning
 df <- df %>%
   mutate(
     number.of.children = ifelse(number.of.children == 0, 0, 1),
@@ -62,8 +53,8 @@ df <- df %>% select(-Booking_ID, -booking.status)
 dummy <- model.matrix(~ market.segment.type - 1, data = df)
 df_encoded <- cbind(df %>% select(-market.segment.type), dummy)
 
-# Drop meal, room type, week related columns
-df_encoded <- df_encoded %>% select(-starts_with("type.of.meal"), -starts_with("room.type"), -number.of.weekend.nights, -number.of.week.nights)
+# Drop meal, room type, 
+df_encoded <- df_encoded %>% select(-starts_with("type.of.meal"), -starts_with("room.type"))
 
 # Fill NaNs (with mean)
 df_encoded <- df_encoded %>%
@@ -100,8 +91,7 @@ for (col in numeric_cols) {
       theme(panel.grid.major.y = element_line(colour = "grey80"),
             panel.grid.major.x = element_blank(),
             panel.grid.minor = element_blank())
-    
-    # We need to print the plot object for ggsave to pick it up or pass it explicitly
+
     print(p) 
     save_plot(paste0("dist_", col, ".png"))
   }
@@ -109,7 +99,7 @@ for (col in numeric_cols) {
 
 # --- Clustering ---
 print("Running clustering algorithms...")
-library(gridExtra)  # Load for grid.arrange function
+library(gridExtra)  
 
 X <- as.matrix(df_scaled)
 k_range <- 2:10
@@ -131,22 +121,12 @@ for (i in seq_along(k_range)) {
   kmeans_labels_list[[i]] <- km$cluster
   kmeans_inertia[i] <- km$tot.withinss
   
-  # Silhouette (using cluster package)
+  # Silhouette 
   ss_km <- silhouette(km$cluster, dist(X))
   kmeans_silhouette[i] <- mean(ss_km[, 3])
   
   # Hierarchical
-  # For large datasets, hclust on full distance matrix is slow. 
-  # We'll use a sample or optimized method if needed, but for ~36k rows it might be heavy.
-  # Let's use 'agnes' or standard 'hclust' but be aware of memory.
-  # Actually, calculating dist(X) for 36k rows is huge (36000^2 doubles ~ 10GB).
-  # Python's AgglomerativeClustering might be more optimized or the user had enough RAM.
-  # We will skip Hierarchical for the full dataset in R to avoid crashing, 
-  # OR we can use a subsample for the hierarchical part just for demonstration.
-  # Let's try on full, but if it crashes, we know why. 
-  # To be safe, let's use a subsample of 5000 for hierarchical metrics.
   
-  # Subsample for hierarchical to avoid memory issues
   set.seed(42)
   idx <- sample(nrow(X), min(5000, nrow(X)))
   X_sub <- X[idx, ]
@@ -157,12 +137,9 @@ for (i in seq_along(k_range)) {
   ss_hc <- silhouette(h_labels, dist(X_sub))
   hierarchical_silhouette[i] <- mean(ss_hc[, 3])
   
-  # Comparison (on subsample)
   km_labels_sub <- kmeans_labels_list[[i]][idx]
   
   # Calculate NMI and ARI
-  # For NMI we'll use a simple implementation or aricode package if available
-  # Since aricode might not be installed, we'll use ARI for both for now
   if (requireNamespace("aricode", quietly = TRUE)) {
     nmi_scores[i] <- aricode::NMI(km_labels_sub, h_labels)
   } else {
@@ -171,7 +148,7 @@ for (i in seq_along(k_range)) {
   ari_scores[i] <- adjustedRandIndex(km_labels_sub, h_labels)
 }
 
-# Evaluation Plot - Combined (matching Python layout)
+# Evaluation Plot - Combined
 eval_df <- data.frame(
   k = k_range,
   Inertia = kmeans_inertia,
@@ -181,7 +158,7 @@ eval_df <- data.frame(
   ARI = ari_scores
 )
 
-# Create 4 subplots in 2x2 grid (matching Python)
+# Create 4 subplots in 2x2 grid
 p1 <- ggplot(eval_df, aes(x = k, y = Inertia)) + 
   geom_line() + 
   geom_point() + 
@@ -208,7 +185,6 @@ p4 <- ggplot(eval_df, aes(x = k, y = ARI)) +
   labs(title = "ARI Score", x = "Number of Clusters (k)", y = "ARI") +
   theme_minimal()
 
-# Combine all 4 plots into one (2x2 grid)
 combined_plot <- grid.arrange(p1, p2, p3, p4, ncol = 2, nrow = 2)
 ggsave("visuals/clustering_evaluation.png", combined_plot, width = 15, height = 12)
 
@@ -217,10 +193,9 @@ print("Finalizing clusters (k=4)...")
 k_optimal <- 4
 set.seed(42)
 km_final <- kmeans(X, centers = k_optimal, nstart = 10)
-df_encoded$Cluster <- as.factor(km_final$cluster - 1) # 0-indexed to match Python
+df_encoded$Cluster <- as.factor(km_final$cluster - 1)
 df_encoded$booking.status <- booking_status
 
-# Cluster Summary
 cluster_means <- df_encoded %>%
   group_by(Cluster) %>%
   summarise(across(where(is.numeric), mean))
@@ -228,7 +203,6 @@ cluster_means <- df_encoded %>%
 print("Cluster Summary (Means):")
 print(cluster_means)
 
-# Create bar plots for each variable (matching Python)
 print("Creating cluster comparison plots...")
 variables_to_analyze <- c(
   'number.of.adults', 'number.of.children', 'car.parking.space', 
@@ -237,18 +211,14 @@ variables_to_analyze <- c(
   'Cancellation_Ratio', 'Price_per_Person'
 )
 
-# Get market segment columns
 market_segment_cols <- names(df_encoded)[grepl("market.segment.type", names(df_encoded))]
 
-# Combine all variables
 all_vars <- c(variables_to_analyze, market_segment_cols)
 
-# Create bar plots for each variable with exact Python settings
 cluster_colors <- c("steelblue", "coral", "lightgreen", "gold")
 
 for (var in all_vars) {
   if (var %in% names(cluster_means)) {
-    # Prepare data for plotting
     plot_data <- cluster_means %>%
       select(Cluster, all_of(var)) %>%
       rename(value = all_of(var))
@@ -272,12 +242,9 @@ for (var in all_vars) {
 
 print("Cluster comparison plots created.")
 
-# Create summary table with Count column (matching Python)
 cluster_summary <- cluster_means %>%
   mutate(Count = table(df_encoded$Cluster)[as.character(Cluster)]) %>%
   select(Count, everything(), -Cluster)
-
-# Create heatmap (matching Python settings)
 print("Creating heatmap...")
 # Normalize cluster_summary for heatmap
 cluster_summary_matrix <- as.matrix(cluster_summary)
@@ -286,7 +253,6 @@ cluster_summary_norm <- apply(cluster_summary_matrix, 2, function(x) {
 })
 rownames(cluster_summary_norm) <- levels(df_encoded$Cluster)
 
-# Convert to long format for ggplot
 heatmap_data <- as.data.frame(cluster_summary_norm) %>%
   mutate(Cluster = rownames(.)) %>%
   pivot_longer(-Cluster, names_to = "Variable", values_to = "Value")
@@ -302,7 +268,6 @@ p_heatmap <- ggplot(heatmap_data, aes(x = Cluster, y = Variable, fill = Value)) 
 ggsave("visuals/cluster_heatmap.png", p_heatmap, width = 16, height = 6)
 print("Heatmap created.")
 
-# Cancellation Rates
 cancel_rates <- df_encoded %>%
   group_by(Cluster) %>%
   summarise(Cancellation_Rate = mean(booking.status == "Canceled") * 100)
@@ -322,7 +287,7 @@ p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = 
 
 save_plot("cancellation_rate.png")
 
-# Create PDF report with all plots (matching Python)
+# Create PDF report with all plots
 print("Creating PDF report...")
 library(magick)
 library(grid)
@@ -330,24 +295,19 @@ library(gridExtra)
 
 pdf_path <- "clustering_report.pdf"
 
-# Get all png files from visuals directory
 plot_files <- list.files("visuals", pattern = "\\.png$", full.names = FALSE)
 plot_files <- sort(plot_files)
 
-# Create PDF
 pdf(pdf_path, width = 12, height = 8)
 
 for (filename in plot_files) {
   filepath <- file.path("visuals", filename)
   
-  # Read image
   img <- image_read(filepath)
   
-  # Create a blank plot and add the image
   grid.newpage()
   grid.raster(img)
   
-  # Add title at the top
   grid.text(filename, x = 0.5, y = 0.98, 
             gp = gpar(fontsize = 10, col = "black"))
 }
