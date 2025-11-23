@@ -169,10 +169,29 @@ kmeans_inertia <- numeric(length(k_range))
 kmeans_labels_list <- list()
 hierarchical_labels_list <- list()
 
+
+# --- Clustering ---
+print("Running clustering algorithms...")
+
+X <- as.matrix(df_scaled)
+k_range <- 2:10
+
+kmeans_silhouette <- numeric(length(k_range))
+hierarchical_silhouette <- numeric(length(k_range))
+nmi_scores <- numeric(length(k_range))
+ari_scores <- numeric(length(k_range))
+kmeans_inertia <- numeric(length(k_range))
+
+kmeans_labels_list <- list()
+hierarchical_labels_list <- list()
+
+# 1. K-Means Loop
+cat("\nΕκτέλεση K-Means για k = 2 έως 10...\n")
 for (i in seq_along(k_range)) {
   k <- k_range[i]
   
   # K-Means
+  set.seed(42)
   km <- kmeans(X, centers = k, nstart = 10)
   kmeans_labels_list[[i]] <- km$cluster
   kmeans_inertia[i] <- km$tot.withinss
@@ -181,27 +200,77 @@ for (i in seq_along(k_range)) {
   ss_km <- silhouette(km$cluster, dist(X))
   kmeans_silhouette[i] <- mean(ss_km[, 3])
   
-  # Hierarchical
-  set.seed(42)
-  idx <- sample(nrow(X), min(5000, nrow(X)))
-  X_sub <- X[idx, ]
+  cat(sprintf("K-Means με k=%d... ✓ (Inertia: %.2f, Silhouette: %.4f)\n", k, kmeans_inertia[i], kmeans_silhouette[i]))
+}
+cat("\nK-Means ολοκληρώθηκε!\n")
+
+# 2. Hierarchical Loop
+cat("\nΕκτέλεση Hierarchical Clustering για k = 2 έως 10...\n")
+
+# Prepare sample for Hierarchical (consistent for all k)
+set.seed(42)
+idx <- sample(nrow(X), min(5000, nrow(X)))
+X_sub <- X[idx, ]
+hc <- hclust(dist(X_sub), method = "ward.D2")
+
+for (i in seq_along(k_range)) {
+  k <- k_range[i]
   
-  hc <- hclust(dist(X_sub), method = "ward.D2")
   h_labels <- cutree(hc, k = k)
+  hierarchical_labels_list[[i]] <- h_labels
   
   ss_hc <- silhouette(h_labels, dist(X_sub))
   hierarchical_silhouette[i] <- mean(ss_hc[, 3])
   
+  cat(sprintf("Hierarchical με k=%d... ✓ (Silhouette: %.4f)\n", k, hierarchical_silhouette[i]))
+}
+cat("\nHierarchical Clustering ολοκληρώθηκε!\n")
+
+# Helper function for NMI (Normalized Mutual Information)
+calculate_nmi <- function(x, y) {
+  t <- table(x, y)
+  n <- sum(t)
+  px <- rowSums(t) / n
+  py <- colSums(t) / n
+  
+  # Mutual Information
+  mi <- 0
+  for (i in 1:nrow(t)) {
+    for (j in 1:ncol(t)) {
+      if (t[i, j] > 0) {
+        p_xy <- t[i, j] / n
+        mi <- mi + p_xy * log(p_xy / (px[i] * py[j]))
+      }
+    }
+  }
+  
+  # Entropy
+  hx <- -sum(px * log(px + 1e-10))
+  hy <- -sum(py * log(py + 1e-10))
+  
+  if (hx + hy == 0) return(0)
+  return(2 * mi / (hx + hy))
+}
+
+# 3. Comparison Loop
+cat("\nΥπολογισμός NMI και ARI μεταξύ K-Means και Hierarchical...\n")
+for (i in seq_along(k_range)) {
+  k <- k_range[i]
+  
   km_labels_sub <- kmeans_labels_list[[i]][idx]
+  h_labels <- hierarchical_labels_list[[i]]
   
   # Calculate NMI and ARI
   if (requireNamespace("aricode", quietly = TRUE)) {
     nmi_scores[i] <- aricode::NMI(km_labels_sub, h_labels)
   } else {
-    nmi_scores[i] <- adjustedRandIndex(km_labels_sub, h_labels)
+    nmi_scores[i] <- calculate_nmi(km_labels_sub, h_labels)
   }
   ari_scores[i] <- adjustedRandIndex(km_labels_sub, h_labels)
+  
+  cat(sprintf("k=%d: NMI=%.4f, ARI=%.4f\n", k, nmi_scores[i], ari_scores[i]))
 }
+cat("\nΥπολογισμοί ολοκληρώθηκαν!\n")
 
 # Evaluation Plot - Combined
 eval_df <- data.frame(

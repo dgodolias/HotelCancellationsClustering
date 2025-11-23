@@ -53,7 +53,7 @@ def fix_invalid_date(date_str):
 def main():
     print("Loading dataset...")
     #FileNotFoundError: [Errno 2] No such file or directory: '../project_cluster.csv'
-    df = pd.read_csv('../project_cluster.csv')
+    df = pd.read_csv('project_cluster.csv')
     
     
     # --- Preprocessing ---
@@ -138,23 +138,40 @@ def main():
     hierarchical_labels_dict = {}
     kmeans_inertia = []
 
+    # 1. K-Means Loop
+    print("\nΕκτέλεση K-Means για k = 2 έως 10...")
     for k in k_range:
-        # K-Means
         kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
         k_labels = kmeans.fit_predict(X)
         kmeans_labels_dict[k] = k_labels
         kmeans_inertia.append(kmeans.inertia_)
-        kmeans_silhouette.append(silhouette_score(X, k_labels))
-        
-        # Hierarchical
+        s_score = silhouette_score(X, k_labels)
+        kmeans_silhouette.append(s_score)
+        print(f"K-Means με k={k}... ✓ (Inertia: {kmeans.inertia_:.2f}, Silhouette: {s_score:.4f})")
+    print("K-Means ολοκληρώθηκε!")
+
+    # 2. Hierarchical Loop
+    print("\nΕκτέλεση Hierarchical Clustering για k = 2 έως 10...")
+    for k in k_range:
         hierarchical = AgglomerativeClustering(n_clusters=k, linkage='ward')
         h_labels = hierarchical.fit_predict(X)
         hierarchical_labels_dict[k] = h_labels
-        hierarchical_silhouette.append(silhouette_score(X, h_labels))
-        
-        # Comparison
-        nmi_scores.append(normalized_mutual_info_score(k_labels, h_labels))
-        ari_scores.append(adjusted_rand_score(k_labels, h_labels))
+        s_score = silhouette_score(X, h_labels)
+        hierarchical_silhouette.append(s_score)
+        print(f"Hierarchical με k={k}... ✓ (Silhouette: {s_score:.4f})")
+    print("Hierarchical Clustering ολοκληρώθηκε!")
+
+    # 3. Comparison Loop
+    print("\nΥπολογισμός NMI και ARI μεταξύ K-Means και Hierarchical...")
+    for k in k_range:
+        k_labels = kmeans_labels_dict[k]
+        h_labels = hierarchical_labels_dict[k]
+        nmi = normalized_mutual_info_score(k_labels, h_labels)
+        ari = adjusted_rand_score(k_labels, h_labels)
+        nmi_scores.append(nmi)
+        ari_scores.append(ari)
+        print(f"k={k}: NMI={nmi:.4f}, ARI={ari:.4f}")
+    print("Υπολογισμοί ολοκληρώθηκαν!")
         
     # Evaluation Plot
     fig, axes = plt.subplots(2, 2, figsize=(15, 12))

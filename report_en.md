@@ -18,17 +18,31 @@ We generated several key features to capture customer behaviour:
 - **Meal Type & Room Type** – initial categorical variables.
 - **Encoding** – one‑hot encoding of categorical variables (`market.segment.type`, `room.type`, `type.of.meal`). The dummy‑variable trap is avoided by using `drop_first=True`, therefore the first level of each category (`room.type_Room_Type 1`, `type.of.meal_Meal Plan 1`, `market.segment.type_Aviation`) is omitted.
 
-### Preprocessing
-- **Data Cleaning** – handling of invalid dates and missing values.
-- **Binning** – rare values are grouped to reduce noise:
-  1. `number.of.children`: 0, 1+.
-  2. `number.of.weekend.nights`: 0, 1, 2, 3+.
-  3. `number.of.week.nights`: up to 5, 6+.
-  4. `P.C` (previous cancellations): 0, 1+.
-  5. `P.not.C` (previous non‑cancellations): 0, 1+.
-  6. `Total_Guests`: 1, 2, 3+ (zero values are set to 1).
-  7. `Total_Nights`: up to 7, 8+.
-- **Scaling** – numeric features are min‑max scaled to the range [-1, 1] to ensure equal contribution to distance calculations.
+### Preprocessing (R Implementation Details)
+- **Data Cleaning**:
+    - Removal of `date.of.reservation` column as it does not offer information for clustering.
+    - Handling of infinite values in `Price_per_Person` by converting them to `NA`.
+    - Imputation of missing values (`NA`) with the mean of each column.
+
+- **Binning & Outlier Handling**:
+    The `pmin()` function in R was used to cap extreme values, and `ifelse()` for grouping:
+    1. **number.of.children**: Converted to binary (0 or 1+) -> `ifelse(number.of.children == 0, 0, 1)`
+    2. **number.of.weekend.nights**: Capped at 3 -> `pmin(..., 3)`
+    3. **number.of.week.nights**: Capped at 6 -> `pmin(..., 6)`
+    4. **P.C & P.not.C**: Converted to binary (0 or 1+) -> `ifelse(..., 0, 1)`
+    5. **Total_Guests**: Correction of zero values to 1 and capped at 3 -> `ifelse(Total_Guests == 0, 1, pmin(Total_Guests, 3))`
+    6. **Total_Nights**: Rounded and capped at 8 -> `pmin(round(Total_Nights), 8)`
+
+- **Encoding**:
+    - Usage of `model.matrix(~ market.segment.type - 1, ...)` to create dummy variables.
+    - Explicit removal of `market.segment.typeAviation` to avoid multicollinearity (dummy variable trap).
+    - Removal of initial categorical columns `type.of.meal` and `room.type` as well as their derivatives, based on feature elimination analysis.
+
+- **Scaling**:
+    - Implementation of a custom `minmax_scale` function for normalization in the range **[-1, 1]**:
+      $$x_{scaled} = 2 \cdot \frac{x - \min(x)}{\max(x) - \min(x)} - 1$$
+    - Applied to all numeric variables using `mutate(across(everything(), minmax_scale))`.
+    - The choice of the [-1, 1] range instead of the typical [0, 1] was made to center the data around zero, which often aids K-Means convergence.
 
 ## 3. Clustering
 Two clustering algorithms were employed to validate the results:
@@ -66,11 +80,16 @@ To confirm stability, K‑Means and Hierarchical results were compared using NMI
 | **4** | **0.9755** | **0.9884** | **Excellent agreement – optimal solution** |
 | 5 | 0.7611 | 0.6187 | Significant drop |
 
-The very high scores for *k* = 4 indicate both algorithms discover the same structure.
+We observe that for **k=3**, the NMI and ARI indices reach their maximum values, indicating that the two algorithms agree almost perfectly on this solution. However, the final choice of **k=4** was based on a combination of all indicators:
+
+1. **Inertia**: The Inertia curve shows a clear "elbow" at k=4, suggesting that adding a 4th cluster significantly reduces intra-cluster variance.
+2. **Silhouette Score**: It reaches its maximum value at **k=4** (approximately 0.49), indicating that the clusters are better separated and more compact compared to k=3.
+3. **Stability**: At k=4, NMI and ARI indices remain extremely high (> 0.98), confirming that the solution is stable and commonly accepted by both algorithms.
+4. **Drop at k=5**: For k=5, we observe a sharp drop in all indices (Silhouette, NMI, ARI), making k=4 the safest and optimal choice.
 
 **Final Results (k = 4):**
 - Silhouette Score ≈ 0.49 (high quality)
-- NMI / ARI > 0.97 (excellent agreement)
+- NMI / ARI > 0.98 (excellent agreement)
 
 ## 5. Cluster Profiles
 Based on the final clustering, four distinct customer profiles were identified. Refer to the heatmap in the Visualisations section for a summary of key characteristics.
