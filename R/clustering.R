@@ -361,7 +361,7 @@ for (var in variables_to_analyze) {
     
     p <- ggplot(plot_data, aes(x = Cluster, y = value, fill = Cluster)) +
       geom_bar(stat = "identity", color = "black", alpha = 0.8) +
-      geom_text(aes(label = sprintf("%.2f", value)), vjust = -0.5, size = 3) +
+      geom_text(aes(label = sprintf("%.4f", value)), vjust = -0.5, size = 3) +
       scale_fill_manual(values = cluster_colors) +
       labs(title = paste("Cluster Comparison:", var), 
            x = "Cluster", 
@@ -384,7 +384,7 @@ market_segment_data <- df_encoded %>%
       market.segment.typeCorporate == 1 ~ "Corporate",
       market.segment.typeOffline == 1 ~ "Offline",
       market.segment.typeOnline == 1 ~ "Online",
-      TRUE ~ "Aviation"  # If all dummies are 0, it's Aviation (dropped category)
+      TRUE ~ "Aviation" 
     )
   ) %>%
   group_by(Cluster, market_segment) %>%
@@ -394,7 +394,7 @@ market_segment_data <- df_encoded %>%
 
 p_market <- ggplot(market_segment_data, aes(x = Cluster, y = proportion, fill = market_segment)) +
   geom_bar(stat = "identity", position = "dodge", color = "black", alpha = 0.8) +
-  geom_text(aes(label = sprintf("%.2f", proportion)), 
+  geom_text(aes(label = sprintf("%.4f", proportion)), 
             position = position_dodge(width = 0.9), vjust = -0.5, size = 2.5) +
   scale_fill_brewer(palette = "Set2") +
   labs(title = "Cluster Comparison: Market Segment Type", 
@@ -409,7 +409,6 @@ p_market <- ggplot(market_segment_data, aes(x = Cluster, y = proportion, fill = 
         panel.background = element_rect(fill = "white", color = NA),
         plot.background = element_rect(fill = "white", color = NA))
 
-# Save market segment plot as standalone file (not in grid)
 ggsave("visuals/cluster_comp_market_segment.png", p_market, width = 12, height = 6)
 print("Market segment cluster comparison plot created.")
 
@@ -420,7 +419,7 @@ cluster_summary <- cluster_means %>%
   mutate(Count = table(df_encoded$Cluster)[as.character(Cluster)]) %>%
   select(Count, everything(), -Cluster)
 print("Creating heatmap...")
-# Normalize cluster_summary for heatmap
+
 cluster_summary_matrix <- as.matrix(cluster_summary)
 cluster_summary_norm <- apply(cluster_summary_matrix, 2, function(x) {
   (x - min(x)) / (max(x) - min(x))
@@ -433,7 +432,7 @@ heatmap_data <- as.data.frame(cluster_summary_norm) %>%
 
 p_heatmap <- ggplot(heatmap_data, aes(x = Cluster, y = Variable, fill = Value)) +
   geom_tile() +
-  geom_text(aes(label = sprintf("%.2f", Value)), color = "black", size = 3) +  # Add annotations
+  geom_text(aes(label = sprintf("%.4f", Value)), color = "black", size = 3) +  # Add annotations
   scale_fill_distiller(palette = "RdYlGn", direction = 1, name = "Normalized\nValue (0-1)") +
   labs(title = "Cluster Means Heatmap (Normalized)", x = "Cluster", y = "Variable") +
   theme_minimal() +
@@ -453,6 +452,7 @@ print(cancel_rates)
 
 p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = Cluster)) +
   geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+  geom_text(aes(label = sprintf("%.4f", Cancellation_Rate)), vjust = -0.5, size = 3) +
   scale_fill_manual(values = c("steelblue", "coral", "lightgreen", "gold")) +
   labs(title = "Cancellation Rate by Cluster", x = "Cluster", y = "Cancellation Rate (%)") +
   theme_minimal() +
@@ -465,30 +465,4 @@ p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = 
 
 ggsave(file.path("visuals", "cancellation_rate.png"), p_cancel, width = 10, height = 6)
 
-# Create PDF report with all plots
-print("Creating PDF report...")
-
-pdf_path <- "clustering_report.pdf"
-
-plot_files <- list.files("visuals", pattern = "\\.png$", full.names = FALSE)
-# Sort them to have a logical order: distributions first, then others
-plot_files <- plot_files[order(!grepl("^dist_", plot_files), plot_files)]
-
-pdf(pdf_path, width = 15, height = 12) # Increased size for grid plots
-
-for (filename in plot_files) {
-  filepath <- file.path("visuals", filename)
-  
-  img <- image_read(filepath)
-  
-  grid.newpage()
-  grid.raster(img)
-  
-  grid.text(filename, x = 0.5, y = 0.98, 
-            gp = gpar(fontsize = 10, col = "black"))
-}
-
-dev.off()
-
-cat(paste("PDF report saved to:", pdf_path, "\n"))
 print("R script completed successfully.")
