@@ -53,7 +53,7 @@ def fix_invalid_date(date_str):
 def main():
     print("Loading dataset...")
     #FileNotFoundError: [Errno 2] No such file or directory: '../project_cluster.csv'
-    df = pd.read_csv('project_cluster.csv')
+    df = pd.read_csv('../project_cluster.csv')
     
     
     # --- Preprocessing ---
@@ -268,9 +268,9 @@ def main():
     # Get all png files in visuals dir
     plot_files = [f for f in os.listdir(VISUALS_DIR) if f.endswith('.png')]
     
-    # Sort them to have a logical order if possible, or just alphabetical
-    plot_files.sort()
-    
+    # Sort them to have a logical order: distributions first, then others
+    plot_files.sort(key=lambda x: (not x.startswith('dist_'), x))
+
     with PdfPages(pdf_path) as pdf:
         for filename in plot_files:
             filepath = os.path.join(VISUALS_DIR, filename)

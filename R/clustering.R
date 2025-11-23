@@ -9,9 +9,9 @@ if (!dir.exists("visuals")) {
   dir.create("visuals")
 }
 
-save_plot <- function(filename) {
-  ggsave(file.path("visuals", filename), width = 10, height = 6)
-  print(paste("Saved plot:", filename))
+save_plot <- function(filename, plot_obj) {
+  ggsave(file.path("visuals", filename), plot = plot_obj, width = 10, height = 6)
+
 }
 
 print("Loading dataset...")
@@ -92,8 +92,8 @@ for (col in numeric_cols) {
             panel.grid.major.x = element_blank(),
             panel.grid.minor = element_blank())
 
-    print(p) 
-    save_plot(paste0("dist_", col, ".png"))
+    # Removed print(p) to avoid Rplots.pdf
+    save_plot(paste0("dist_", col, ".png"), p)
   }
 }
 
@@ -285,7 +285,7 @@ p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = 
         panel.grid.major.x = element_blank(),
         panel.grid.minor = element_blank())
 
-save_plot("cancellation_rate.png")
+save_plot("cancellation_rate.png", p_cancel)
 
 # Create PDF report with all plots
 print("Creating PDF report...")
@@ -296,7 +296,8 @@ library(gridExtra)
 pdf_path <- "clustering_report.pdf"
 
 plot_files <- list.files("visuals", pattern = "\\.png$", full.names = FALSE)
-plot_files <- sort(plot_files)
+# Sort them to have a logical order: distributions first, then others
+plot_files <- plot_files[order(!grepl("^dist_", plot_files), plot_files)]
 
 pdf(pdf_path, width = 12, height = 8)
 
