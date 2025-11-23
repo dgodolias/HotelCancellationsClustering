@@ -3,15 +3,36 @@ library(tidyverse)
 library(cluster)
 library(factoextra)
 library(mclust)
+library(gridExtra)
+library(grid)
+library(magick)
 
 # Create visuals directory
 if (!dir.exists("visuals")) {
   dir.create("visuals")
 }
 
-save_plot <- function(filename, plot_obj) {
-  ggsave(file.path("visuals", filename), plot = plot_obj, width = 10, height = 6)
+save_grid_plots <- function(plot_list, prefix, ncol = 2, nrow = 2) {
+  chunk_size <- ncol * nrow
+  num_chunks <- ceiling(length(plot_list) / chunk_size)
+  
+  for (i in 1:num_chunks) {
+    start_idx <- (i - 1) * chunk_size + 1
+    end_idx <- min(i * chunk_size, length(plot_list))
+    
+    chunk_plots <- plot_list[start_idx:end_idx]
 
+    if (length(chunk_plots) < chunk_size) {
+      for (j in (length(chunk_plots) + 1):chunk_size) {
+        chunk_plots[[j]] <- ggplot() + theme_void()
+      }
+    }
+    
+    combined_plot <- grid.arrange(grobs = chunk_plots, ncol = ncol, nrow = nrow)
+    filename <- paste0(prefix, "_grid_", i, ".png")
+    ggsave(file.path("visuals", filename), combined_plot, width = 15, height = 12)
+    print(paste("Saved grid plot:", filename))
+  }
 }
 
 print("Loading dataset...")
@@ -48,8 +69,6 @@ booking_status <- df$booking.status
 df <- df %>% select(-Booking_ID, -booking.status)
 
 # One-hot encoding for market.segment.type
-# R handles factors automatically in many cases, but for clustering we need numeric
-# We'll use model.matrix to create dummy variables
 dummy <- model.matrix(~ market.segment.type - 1, data = df)
 df_encoded <- cbind(df %>% select(-market.segment.type), dummy)
 
@@ -61,7 +80,6 @@ df_encoded <- df_encoded %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
 
 # Scaling (MinMax -1 to 1)
-# Function for MinMax scaling to [-1, 1]
 minmax_scale <- function(x) {
   min_x <- min(x)
   max_x <- max(x)
@@ -82,24 +100,26 @@ numeric_cols <- c(
   'number.of.weekend.nights', 'number.of.children', 'number.of.adults'
 )
 
+dist_plots <- list()
 for (col in numeric_cols) {
   if (col %in% names(df_scaled)) {
     p <- ggplot(df_scaled, aes(x = .data[[col]])) +
       geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
+      stat_bin(bins = 30, geom = "text", aes(label = ifelse(after_stat(count) > 0, after_stat(count), "")), vjust = -0.5, size = 3) +
       labs(title = paste("Distribution (Scaled):", col), x = "Scaled Value [-1, 1]", y = "Frequency") +
       theme_minimal() +
       theme(panel.grid.major.y = element_line(colour = "grey80"),
             panel.grid.major.x = element_blank(),
             panel.grid.minor = element_blank())
-
-    # Removed print(p) to avoid Rplots.pdf
-    save_plot(paste0("dist_", col, ".png"), p)
+    dist_plots[[length(dist_plots) + 1]] <- p
   }
 }
 
+save_grid_plots(dist_plots, "dist")
+
+
 # --- Clustering ---
 print("Running clustering algorithms...")
-library(gridExtra)  
 
 X <- as.matrix(df_scaled)
 k_range <- 2:10
@@ -126,7 +146,6 @@ for (i in seq_along(k_range)) {
   kmeans_silhouette[i] <- mean(ss_km[, 3])
   
   # Hierarchical
-  
   set.seed(42)
   idx <- sample(nrow(X), min(5000, nrow(X)))
   X_sub <- X[idx, ]
@@ -214,9 +233,9 @@ variables_to_analyze <- c(
 market_segment_cols <- names(df_encoded)[grepl("market.segment.type", names(df_encoded))]
 
 all_vars <- c(variables_to_analyze, market_segment_cols)
-
 cluster_colors <- c("steelblue", "coral", "lightgreen", "gold")
 
+comp_plots <- list()
 for (var in all_vars) {
   if (var %in% names(cluster_means)) {
     plot_data <- cluster_means %>%
@@ -225,6 +244,7 @@ for (var in all_vars) {
     
     p <- ggplot(plot_data, aes(x = Cluster, y = value, fill = Cluster)) +
       geom_bar(stat = "identity", color = "black", alpha = 0.8) +
+      geom_text(aes(label = sprintf("%.2f", value)), vjust = -0.5, size = 3) +
       scale_fill_manual(values = cluster_colors) +
       labs(title = paste("Cluster Comparison:", var), 
            x = "Cluster", 
@@ -234,12 +254,11 @@ for (var in all_vars) {
             panel.grid.major.y = element_line(colour = "grey80"),
             panel.grid.major.x = element_blank(),
             panel.grid.minor = element_blank())
-    
-    ggsave(file.path("visuals", paste0("cluster_comp_", gsub("\\\\.", "_", var), ".png")), 
-           p, width = 10, height = 6)
+    comp_plots[[length(comp_plots) + 1]] <- p
   }
 }
 
+save_grid_plots(comp_plots, "cluster_comp")
 print("Cluster comparison plots created.")
 
 cluster_summary <- cluster_means %>%
@@ -285,13 +304,10 @@ p_cancel <- ggplot(cancel_rates, aes(x = Cluster, y = Cancellation_Rate, fill = 
         panel.grid.major.x = element_blank(),
         panel.grid.minor = element_blank())
 
-save_plot("cancellation_rate.png", p_cancel)
+ggsave(file.path("visuals", "cancellation_rate.png"), p_cancel, width = 10, height = 6)
 
 # Create PDF report with all plots
 print("Creating PDF report...")
-library(magick)
-library(grid)
-library(gridExtra)
 
 pdf_path <- "clustering_report.pdf"
 
@@ -299,7 +315,7 @@ plot_files <- list.files("visuals", pattern = "\\.png$", full.names = FALSE)
 # Sort them to have a logical order: distributions first, then others
 plot_files <- plot_files[order(!grepl("^dist_", plot_files), plot_files)]
 
-pdf(pdf_path, width = 12, height = 8)
+pdf(pdf_path, width = 15, height = 12) # Increased size for grid plots
 
 for (filename in plot_files) {
   filepath <- file.path("visuals", filename)
