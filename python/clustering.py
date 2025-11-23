@@ -87,7 +87,7 @@ def main():
     
     # One-hot encoding
     categorical_features = ['market.segment.type']
-    df_encoded = pd.get_dummies(df_processed, columns=categorical_features, drop_first=False)
+    df_encoded = pd.get_dummies(df_processed, columns=categorical_features, drop_first=True)
     
     # Drop meal, room type, week related columns
     cols_to_drop = [col for col in df_encoded.columns if col.startswith(('type.of.meal', 'room.type'))] 

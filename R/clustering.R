@@ -70,7 +70,8 @@ df <- df %>% select(-Booking_ID, -booking.status)
 
 # One-hot encoding for market.segment.type
 dummy <- model.matrix(~ market.segment.type - 1, data = df)
-df_encoded <- cbind(df %>% select(-market.segment.type), dummy)
+df_encoded <- cbind(df %>% select(-market.segment.type), dummy) %>%
+  select(-market.segment.typeAviation)
 
 # Drop meal, room type, 
 df_encoded <- df_encoded %>% select(-starts_with("type.of.meal"), -starts_with("room.type"))
