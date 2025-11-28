@@ -6,6 +6,8 @@ import os
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score, normalized_mutual_info_score, adjusted_rand_score
+from sklearn.decomposition import PCA
+from scipy.cluster.hierarchy import dendrogram, linkage
 import warnings
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -52,8 +54,17 @@ def fix_invalid_date(date_str):
 
 def main():
     print("Loading dataset...")
-    #FileNotFoundError: [Errno 2] No such file or directory: '../project_cluster.csv'
-    df = pd.read_csv('project_cluster.csv')
+    try:
+        # Load dataset relative to the script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(script_dir, '../project cluster.xlsx')
+        df = pd.read_excel(file_path)
+    except FileNotFoundError:
+        print(f"Error: '{file_path}' not found. Please check the file path.")
+        return
+    except Exception as e:
+        print(f"Error loading file: {e}")
+        return
     
     
     # --- Preprocessing ---
@@ -68,11 +79,12 @@ def main():
     df_processed['Price_per_Person'] = df_processed['average.price'] / df_processed['Total_Guests']
     df_processed['Price_per_Person'].replace([np.inf, -np.inf], np.nan, inplace=True)
     
-    # Date fixing
-    df_processed['date.of.reservation'] = df_processed['date.of.reservation'].apply(fix_invalid_date) # pyright: ignore[reportArgumentType, reportCallIssue]
-    df_processed.drop(columns=['date.of.reservation'], inplace=True)
+    # Date fixing - R script drops it, so we drop it too. 
+    # (R: df <- df %>% select(-date.of.reservation))
+    if 'date.of.reservation' in df_processed.columns:
+        df_processed.drop(columns=['date.of.reservation'], inplace=True)
     
-    # Value capping/binning
+    # Value capping/binning - Matching R script logic
     df_processed['number.of.children'] = df_processed['number.of.children'].apply(lambda x: 0 if x == 0 else 1)
     df_processed['number.of.weekend.nights'] = df_processed['number.of.weekend.nights'].apply(lambda x: min(x, 3))
     df_processed['number.of.week.nights'] = df_processed['number.of.week.nights'].apply(lambda x: min(x, 6))
@@ -87,6 +99,8 @@ def main():
     
     # One-hot encoding
     categorical_features = ['market.segment.type']
+    # drop_first=True will drop the first alphabetical category. 
+    # If 'Aviation' is present and first, it will be dropped, matching R's logic.
     df_encoded = pd.get_dummies(df_processed, columns=categorical_features, drop_first=True)
     
     # Drop meal, room type, week related columns
@@ -97,8 +111,8 @@ def main():
     if df_encoded.isnull().sum().sum() > 0:
         df_encoded = df_encoded.fillna(df_encoded.mean())
         
-    # Scaling
-    scaler = MinMaxScaler(feature_range=(-1, 1))
+    # Scaling (0 to 1) - Changed from (-1, 1) to match R
+    scaler = MinMaxScaler(feature_range=(0, 1))
     df_scaled_array = scaler.fit_transform(df_encoded)
     df_scaled = pd.DataFrame(df_scaled_array, columns=df_encoded.columns)
     
@@ -118,7 +132,7 @@ def main():
             plt.figure(figsize=(10, 6))
             plt.hist(df_scaled[col], bins=30, edgecolor='black', alpha=0.7)
             plt.title(f'Distribution (Scaled): {col}')
-            plt.xlabel('Scaled Value [-1, 1]')
+            plt.xlabel('Scaled Value [0, 1]')
             plt.ylabel('Frequency')
             plt.grid(axis='y', alpha=0.3)
             plt.tight_layout()
@@ -152,6 +166,22 @@ def main():
 
     # 2. Hierarchical Loop
     print("\nΕκτέλεση Hierarchical Clustering για k = 2 έως 10...")
+    
+    # Dendrogram (using a sample for visibility)
+    print("Generating Dendrogram...")
+    plt.figure(figsize=(12, 8))
+    # Use a sample for dendrogram to avoid overcrowding
+    sample_idx = np.random.choice(X.shape[0], min(5000, X.shape[0]), replace=False)
+    X_sample = X[sample_idx]
+    Z = linkage(X_sample, method='ward')
+    dendrogram(Z, truncate_mode='lastp', p=50, leaf_rotation=90., leaf_font_size=10., show_contracted=True)
+    plt.title('Hierarchical Clustering Dendrogram (Ward Linkage, Sample=5000)')
+    plt.xlabel('Cluster Size')
+    plt.ylabel('Distance')
+    plt.tight_layout()
+    save_plot('dendrogram.png')
+    print("Dendrogram saved.")
+
     for k in k_range:
         hierarchical = AgglomerativeClustering(n_clusters=k, linkage='ward')
         h_labels = hierarchical.fit_predict(X)
@@ -218,6 +248,21 @@ def main():
     kmeans_optimal = KMeans(n_clusters=k_optimal, random_state=42, n_init=10)
     cluster_labels = kmeans_optimal.fit_predict(X)
     
+    # PCA Visualization
+    print("Generating PCA plot...")
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X)
+    
+    plt.figure(figsize=(10, 8))
+    scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=cluster_labels, cmap='viridis', alpha=0.6, s=10)
+    plt.title(f'K-Means Clustering (k={k_optimal}) - PCA Projection')
+    plt.xlabel(f'Principal Component 1 ({pca.explained_variance_ratio_[0]:.2%} variance)')
+    plt.ylabel(f'Principal Component 2 ({pca.explained_variance_ratio_[1]:.2%} variance)')
+    plt.colorbar(scatter, label='Cluster')
+    plt.grid(True, alpha=0.3)
+    save_plot('pca_clusters.png')
+    print("PCA plot saved.")
+    
     df_with_clusters = df_encoded.copy()
     df_with_clusters['Cluster'] = cluster_labels
     df_with_clusters['booking.status'] = booking_status.values
@@ -248,6 +293,7 @@ def main():
     cluster_summary = cluster_summary[cols_order]
     
     print("\nCluster Summary (Means):")
+    print(cluster_summary)
 
     
     # Heatmap
