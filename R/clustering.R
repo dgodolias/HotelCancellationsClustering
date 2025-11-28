@@ -92,11 +92,11 @@ df_encoded <- df_encoded %>% select(-starts_with("type.of.meal"), -starts_with("
 df_encoded <- df_encoded %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
 
-# Scaling (MinMax -1 to 1)
+# Scaling (MinMax 0 to 1)
 minmax_scale <- function(x) {
   min_x <- min(x)
   max_x <- max(x)
-  return(2 * ((x - min_x) / (max_x - min_x)) - 1)
+  return((x - min_x) / (max_x - min_x))
 }
 
 df_scaled <- df_encoded %>%
@@ -130,7 +130,7 @@ for (col in numeric_cols) {
     p <- ggplot(df_scaled, aes(x = .data[[col]])) +
       geom_histogram(bins = 30, fill = "steelblue", color = "black", alpha = 0.7) +
       stat_bin(bins = 30, geom = "text", aes(label = ifelse(after_stat(count) > 0, after_stat(count), NA)), vjust = -0.5, size = 3) +
-      labs(title = paste("Distribution (Scaled):", col), x = "Scaled Value [-1, 1]", y = "Frequency") +
+      labs(title = paste("Distribution (Scaled):", col), x = "Scaled Value [0, 1]", y = "Frequency") +
       theme_minimal() +
       theme(panel.grid.major.y = element_line(colour = "grey80"),
             panel.grid.major.x = element_blank(),
