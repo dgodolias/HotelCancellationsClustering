@@ -122,9 +122,18 @@
 - **Silhouette Score**: ~0.49 (Υψηλή ποιότητα)
 - **NMI** = 0.9726 / **ARI** = 0.9890 (Εξαιρετική συμφωνία μεταξύ K-Means και Ιεραρχικής)
 
-## 4. Cluster Visuals & Profiles
+### Οπτική Επιβεβαίωση (Python Generated)
+Για περαιτέρω επιβεβαίωση της δομής των δεδομένων, δημιουργήσαμε γραφήματα PCA και Dendrogram. Και στα δύο γραφήματα φαίνεται ξεκάθαρα η ύπαρξη 4 ομάδων.
 
-Με βάση την τελική ομαδοποίηση, εντοπίσαμε 4 διακριτά προφίλ πελατών.
+**PCA Projection (K-Means k=4)**
+<img src="python/visuals/pca_clusters.png" alt="PCA Clusters" width="500"/>
+*Η προβολή PCA δείχνει ξεκάθαρα 4 διακριτές ομάδες, επιβεβαιώνοντας την επιλογή του k=4.*
+
+**Hierarchical Clustering Dendrogram**
+<img src="python/visuals/dendrogram.png" alt="Dendrogram" width="600"/>
+*Το δενδρόγραμμα υποδεικνύει επίσης μια φυσική διαίρεση σε 4 κύριους κλάδους.*
+
+## 4. Cluster Visuals & Profiles
 
 ### Heatmap
 <img src="R/visuals/cluster_heatmap.png" alt="Heatmap" width="700"/>
@@ -139,17 +148,16 @@
 <img src="R/visuals/cancellation_rate.png" alt="Ποσοστά Ακυρώσεων" width="570"/>
 
 ### Συγκρίσεις Ομάδων
-<img src="R/visuals/cluster_comp_grid_1.png" alt="Πλέγμα Συγκρίσεων Ομάδων 1" width="570"/>
-<img src="R/visuals/cluster_comp_grid_2.png" alt="Πλέγμα Συγκρίσεων Ομάδων 2" width="570"/>
-<img src="R/visuals/cluster_comp_grid_3.png" alt="Πλέγμα Συγκρίσεων Ομάδων 3" width="570"/>
-<img src="R/visuals/cluster_comp_grid_4.png" alt="Πλέγμα Συγκρίσεων Ομάδων 4" width="570"/>
+<img src="R/visuals/cluster_comp_grid_1.png" alt="Πλέγμα Συγκρίσεων Ομάδων 1" width="560"/>
+<img src="R/visuals/cluster_comp_grid_2.png" alt="Πλέγμα Συγκρίσεων Ομάδων 2" width="560"/>
+<img src="R/visuals/cluster_comp_grid_3.png" alt="Πλέγμα Συγκρίσεων Ομάδων 3" width="560"/>
+<img src="R/visuals/cluster_comp_grid_4.png" alt="Πλέγμα Συγκρίσεων Ομάδων 4" width="560"/>
 
 ### Σύγκριση Market Segment ανά Cluster
-<img src="R/visuals/cluster_comp_market_segment.png" alt="Market Segment ανά Cluster" width="570"/>
+<img src="R/visuals/cluster_comp_market_segment.png" alt="Market Segment ανά Cluster" width="560"/>
 
+Με βάση την τελική ομαδοποίηση, εντοπίσαμε 4 διακριτά προφίλ πελατών.
 Θα επιχειρήσουμε να τα ονοματοδοτήσουμε κατάλληλα και να τα παρατηρήσουμε. Για την επιβεβαίωση των βασικών χαρακτηριστικών των ομάδων, ανατρέξτε στο heatmap που βρίσκεται παραπάνω:
-<br>
-<br>
 <br>
 <br>
 
